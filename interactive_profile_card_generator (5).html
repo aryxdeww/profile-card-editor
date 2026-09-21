@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile Card Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+    
+    * {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #08080a;
+      color: #f3f4f6;
+      min-height: 100vh;
+    }
+
+    .bg-glow {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.08), transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .profile-card {
+      background-color: #0d0e12;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
+      width: 780px; /* Ukuran ideal kartu lanskap */
+      border-radius: 28px;
+      padding: 36px;
+      display: flex;
+      flex-direction: row;
+      gap: 32px;
+      justify-content: space-between;
+      align-items: stretch;
+      transform-origin: center center;
+    }
+
+    /* Container pembungkus untuk autoscaling di HP */
+    .card-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      padding: 10px;
+    }
+
+    /* Scaling otomatis untuk layar mobile agar persis seperti gambar 4 */
+    @media (max-width: 800px) {
+      .card-wrapper {
+        padding: 5px;
+      }
+      .profile-card {
+        zoom: 0.85; /* fallback */
+      }
+    }
+    @media (max-width: 650px) {
+      .profile-card {
+        zoom: 0.68;
+      }
+    }
+    @media (max-width: 500px) {
+      .profile-card {
+        zoom: 0.52;
+      }
+    }
+    @media (max-width: 380px) {
+      .profile-card {
+        zoom: 0.44;
+      }
+    }
+
+    /* Custom Accent Color Dynamic Utility */
+    .accent-bg { background-color: var(--accent-color, #a855f7); }
+    .accent-text { color: var(--accent-color, #a855f7); }
+
+    /* Scrollbar editor */
+    .custom-scroll::-webkit-scrollbar { width: 5px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 10px; }
+
+    input[type=range] { accent-color: var(--accent-color, #a855f7); }
+
+    .no-break-text {
+      white-space: nowrap;
+      word-break: keep-all;
+      hyphens: none;
+    }
+
+    /* Foto Profil 1:1 Presisi */
+    .profile-img-box {
+      width: 260px;
+      height: 260px;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      flex-shrink: 0;
+    }
+    .profile-img-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+  </style>
+</head>
+<body class="flex flex-col lg:flex-row min-h-screen antialiased selection:bg-purple-500 selection:text-white" id="main-body">
+
+  <div class="bg-glow"></div>
+
+  <!-- EDITOR PANEL (LEFT SIDEBAR) -->
+  <aside id="editor-panel" class="w-full lg:w-[400px] bg-[#111218] border-r border-white/10 p-5 flex flex-col gap-4 z-10 custom-scroll lg:h-screen lg:overflow-y-auto">
+    <div class="flex items-center justify-between border-b border-white/10 pb-3">
+      <div class="flex items-center gap-3">
+        <div class="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+        </div>
+        <div>
+          <h2 class="font-bold text-base text-white">Profile Card Editor</h2>
+          <p class="text-[11px] text-gray-400">Edit what you wanna like and save it to HTML.</p>
+        </div>
+      </div>
+      <button onclick="resetToDefault()" class="text-xs text-gray-400 hover:text-white transition px-2 py-1 rounded bg-white/5 border border-white/10">Reset</button>
+    </div>
+
+    <!-- FORM INPUTS -->
+    <div class="space-y-4 text-xs">
+      
+      <!-- NAMA / TITLE -->
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="font-semibold uppercase tracking-wider text-gray-300">Title</label>
+          <span id="name-size-val" class="text-purple-400 font-mono">2.5rem</span>
+        </div>
+        <input type="text" id="input-name" value="" oninput="updateCard()" placeholder="Add title..." class="w-full bg-[#181920] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] text-gray-500">A</span>
+          <input type="range" id="input-name-size" min="1.0" max="4.5" step="0.1" value="2.8" oninput="updateCard()" class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+          <span class="text-xs font-bold text-gray-400">A</span>
+        </div>
+      </div>
+
+      <!-- TAGLINE / SUBTITLE -->
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="font-semibold uppercase tracking-wider text-gray-300">Subtitle</label>
+          <span id="tagline-size-val" class="text-purple-400 font-mono">1.25rem</span>
+        </div>
+        <input type="text" id="input-tagline" value="" oninput="updateCard()" placeholder="Add subtitle..." class="w-full bg-[#181920] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition mb-2">
+        <div class="flex items-center gap-2">
+          <span class="text-[10px] text-gray-500">A</span>
+          <input type="range" id="input-tagline-size" min="0.6" max="2.5" step="0.05" value="1.25" oninput="updateCard()" placeholder="Add subtitle..." class="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+          <span class="text-xs font-bold text-gray-400">A</span>
+        </div>
+      </div>
+
+      <!-- nggo foto profil -->
+      <div>
+        <label class="block font-semibold uppercase tracking-wider text-gray-300 mb-1">Picture (best 1:1)</label>
+        <input type="text" id="input-img-url" value="" oninput="updateCard()" placeholder="Paste URL picture..." class="w-full bg-[#181920] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition mb-2">
+        <label class="flex items-center justify-center gap-2 w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 cursor-pointer transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+          Or upload photo...
+          <input type="file" id="input-img-file" accept="image/*" onchange="handleFileUpload(event)" class="hidden">
+        </label>
+      </div>
+
+      <!-- nggo milih aksen warna -->
+      <div>
+        <label class="block font-semibold uppercase tracking-wider text-gray-300 mb-2">Accent Color</label>
+        <div class="flex items-center gap-3">
+          <input type="color" id="input-accent" value="#a855f7" onchange="updateCard()" oninput="updateCard()" class="w-9 h-9 rounded-lg bg-transparent border border-white/20 cursor-pointer p-0">
+          <div class="flex gap-2">
+            <button onclick="setAccent('#a855f7')" class="w-6 h-6 rounded-full bg-[#a855f7] border border-white/20"></button>
+            <button onclick="setAccent('#3b82f6')" class="w-6 h-6 rounded-full bg-[#3b82f6] border border-white/20"></button>
+            <button onclick="setAccent('#10b981')" class="w-6 h-6 rounded-full bg-[#10b981] border border-white/20"></button>
+            <button onclick="setAccent('#f43f5e')" class="w-6 h-6 rounded-full bg-[#f43f5e] border border-white/20"></button>
+            <button onclick="setAccent('#eab308')" class="w-6 h-6 rounded-full bg-[#eab308] border border-white/20"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TOMBOL AKSI & MODAL BIOGRAFI -->
+      <div class="border-t border-white/10 pt-3 space-y-3">
+        <div>
+          <label class="block font-semibold uppercase tracking-wider text-gray-300 mb-1">Action button</label>
+          <input type="text" id="input-btn-text" value="" oninput="updateCard()" class="w-full bg-[#181920] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition">
+        </div>
+        <div>
+          <label class="block font-semibold uppercase tracking-wider text-gray-300 mb-1">Description</label>
+          <textarea id="input-bio-text" rows="3" oninput="updateCard()" class="w-full bg-[#181920] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition">Halo! Saya seorang Linux Enthusiast & Fictophile. Selamat datang di kartu profil interaktif saya!&#10;&#10;Kamu bisa mengisinya dengan riwayat keahlian, sosial media, atau project yang sedang kamu kerjakan.</textarea>
+        </div>
+      </div>
+
+      <!-- SOSIAL MEDIA LINKS -->
+      <div class="border-t border-white/10 pt-3">
+        <div class="flex justify-between items-center mb-2">
+          <label class="font-semibold uppercase tracking-wider text-gray-300">Socials links</label>
+          <button onclick="addSocialLink()" class="text-purple-400 hover:underline">+ add another</button>
+        </div>
+        <div id="social-inputs" class="space-y-2">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="pt-3 border-t border-white/10 space-y-2 mt-auto">
+      <button onclick="exportHTML()" class="w-full py-2.5 px-4 rounded-xl accent-bg font-bold text-black hover:opacity-90 transition flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20 text-xs sm:text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+        Download code (.html)
+      </button>
+      <!--<button onvlick="exportImage()" class="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 font-medium text-white transition flex items-center justify-center gap-2 text-xs sm:text-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        Simpan Sebagai Gambar PNG
+      </button>-->
+    </div>
+  </aside>
+
+  <!-- MAIN CANVAS PREVIEW -->
+  <main class="flex-1 flex flex-col items-center justify-center p-2 sm:p-6 relative min-h-[500px] z-10 overflow-hidden">
+    <div class="mb-3 flex items-center gap-2 text-xs text-gray-400 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full">
+      <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+      Live Canvas Preview (Auto-Scaled)
+    </div>
+
+    <div class="card-wrapper">
+      <!-- PREVIEW PROFILE CARD (KUNCI LANDSCAPE PERFECT) -->
+      <div id="export-target" class="profile-card">
+        
+        <!-- SISI KIRI: TEXT & SOSMED & GARIS AKSEN PERMANEN -->
+        <div class="flex-1 flex flex-col justify-between min-w-0 pr-2">
+          
+          <!-- TOP: NAMA & TAGLINE -->
+          <div class="space-y-3 mb-4">
+            <h1 id="card-name" class="font-black text-white tracking-tight leading-none uppercase no-break-text">
+              Lorem ipsum
+            </h1>
+            <p id="card-tagline" class="text-gray-400 font-normal leading-relaxed">
+              Linux Enthusiast, Fictophile, Introvert, Asocial.
+            </p>
+          </div>
+
+          <!-- BOTTOM: GARIS AKSEN + SOSMED LINKS -->
+          <div class="mt-auto pt-3 space-y-4">
+            <!-- GARIS AKSEN UNGU PERMANEN DI ATAS LINK SOSMED -->
+            <div id="card-line" class="w-full h-[3px] accent-bg rounded-full shadow-[0_0_12px_var(--accent-color)] opacity-90"></div>
+
+            <!-- SOSMED LINKS -->
+            <div id="card-socials" class="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm font-bold">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- SISI KANAN: FOTO (1:1 PROPORSI) & TOMBOL AUTOBIOGRAPH -->
+        <div class="flex flex-col justify-between gap-4 shrink-0" style="width: 260px;">
+          
+          <!-- FOTO PROFIL (1:1 PRESISI PERSEGI) -->
+          <div class="profile-img-box shadow-inner">
+            <img id="card-img" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80" alt="Profile">
+          </div>
+
+          <!-- TOMBOL AUTOBIOGRAPH -->
+          <button onclick="openModal()" id="card-btn" class="w-full py-3.5 px-4 rounded-2xl accent-bg font-black text-black tracking-wider uppercase text-xs hover:brightness-110 active:scale-95 transition shadow-lg flex items-center justify-center gap-2 shrink-0">
+            Add button title
+          </button>
+
+        </div>
+
+      </div>
+    </div>
+
+    <p class="text-[11px] text-gray-500 mt-3 text-center">
+      Klik tombol <span class="font-bold text-gray-300">AUTOBIOGRAPH</span> untuk tes modal biografi.
+    </p>
+  </main>
+
+  <!-- MODAL BIOGRAFI -->
+  <div id="bio-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+    <div class="bg-[#12131a] border border-white/10 w-full max-w-lg rounded-2xl p-5 sm:p-7 shadow-2xl relative space-y-4">
+      
+      <div class="flex items-center justify-between border-b border-white/10 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full overflow-hidden border border-purple-500 shrink-0">
+            <img id="modal-img" src="" class="w-full h-full object-cover">
+          </div>
+          <div>
+            <h3 id="modal-title" class="font-bold text-white text-sm sm:text-base">ARYXDEWW</h3>
+            <p id="modal-subtitle" class="text-xs accent-text">Linux Enthusiast</p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-white p-1.5 rounded-lg bg-white/5 border border-white/10">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+
+      <div>
+        <h4 class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Autobiography / Bio</h4>
+        <div id="modal-bio-content" class="text-xs sm:text-sm text-gray-300 leading-relaxed whitespace-pre-line bg-white/5 p-4 rounded-xl border border-white/5 max-h-[60vh] overflow-y-auto custom-scroll">
+          <!-- Bio Content -->
+        </div>
+      </div>
+
+      <div class="pt-2 flex justify-end">
+        <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-medium text-xs transition">
+          Tutup
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let socials = [
+      { name: 'TikTok', url: '#' },
+      { name: 'Instagram', url: '#' },
+      { name: 'YouTube', url: '#' },
+      { name: 'GitHub', url: '#' }
+    ];
+
+    function init() {
+      renderSocialInputs();
+      updateCard();
+    }
+
+    function updateCard() {
+      const name = document.getElementById('input-name').value;
+      const nameSize = document.getElementById('input-name-size').value;
+      const tagline = document.getElementById('input-tagline').value;
+      const taglineSize = document.getElementById('input-tagline-size').value;
+      const imgUrl = document.getElementById('input-img-url').value;
+      const accent = document.getElementById('input-accent').value;
+      const btnText = document.getElementById('input-btn-text').value;
+
+      document.documentElement.style.setProperty('--accent-color', accent);
+
+      const elName = document.getElementById('card-name');
+      elName.innerText = name || 'Lorem ipsum';
+      elName.style.fontSize = `${nameSize}rem`;
+      document.getElementById('name-size-val').innerText = `${nameSize}rem`;
+
+      const elTagline = document.getElementById('card-tagline');
+      elTagline.innerText = tagline || 'dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
+      elTagline.style.fontSize = `${taglineSize}rem`;
+      document.getElementById('tagline-size-val').innerText = `${taglineSize}rem`;
+
+      document.getElementById('card-img').src = imgUrl;
+      document.getElementById('card-btn').innerText = btnText || 'BUTTON';
+
+      const socialsContainer = document.getElementById('card-socials');
+      socialsContainer.innerHTML = '';
+      
+      socials.forEach((item, index) => {
+        if (item.name) {
+          const a = document.createElement('a');
+          a.href = item.url || '#';
+          a.target = '_blank';
+          a.className = 'accent-text hover:underline transition';
+          a.innerText = item.name;
+          socialsContainer.appendChild(a);
+
+          if (index < socials.length - 1) {
+            const dot = document.createElement('span');
+            dot.className = 'text-gray-600 font-normal';
+            dot.innerText = '•';
+            socialsContainer.appendChild(dot);
+          }
+        }
+      });
+    }
+
+    function setAccent(color) {
+      document.getElementById('input-accent').value = color;
+      updateCard();
+    }
+
+    function handleFileUpload(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          document.getElementById('input-img-url').value = evt.target.result;
+          updateCard();
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function renderSocialInputs() {
+      const container = document.getElementById('social-inputs');
+      container.innerHTML = '';
+
+      socials.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex gap-2 items-center';
+        row.innerHTML = `
+          <input type="text" value="${item.name}" oninput="updateSocial(${idx}, 'name', this.value)" placeholder="Nama Platform" class="w-1/2 bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white">
+          <input type="text" value="${item.url}" oninput="updateSocial(${idx}, 'url', this.value)" placeholder="URL / Link" class="w-1/2 bg-[#181920] border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white">
+          <button onclick="removeSocial(${idx})" class="text-gray-500 hover:text-red-400 p-1">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </button>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function updateSocial(index, field, value) {
+      socials[index][field] = value;
+      updateCard();
+    }
+
+    function addSocialLink() {
+      socials.push({ name: 'Platform', url: '#' });
+      renderSocialInputs();
+      updateCard();
+    }
+
+    function removeSocial(index) {
+      socials.splice(index, 1);
+      renderSocialInputs();
+      updateCard();
+    }
+
+    function openModal() {
+      const name = document.getElementById('input-name').value;
+      const tagline = document.getElementById('input-tagline').value;
+      const imgUrl = document.getElementById('input-img-url').value;
+      const bioText = document.getElementById('input-bio-text').value;
+
+      document.getElementById('modal-title').innerText = name;
+      document.getElementById('modal-subtitle').innerText = tagline;
+      document.getElementById('modal-img').src = imgUrl;
+      document.getElementById('modal-bio-content').innerText = bioText;
+
+      const modal = document.getElementById('bio-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('bio-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function resetToDefault() {
+      document.getElementById('input-name').value = 'Nama Kau';
+      document.getElementById('input-name-size').value = '2.8';
+      document.getElementById('input-tagline').value = 'Lorem ipsum dolor sit amet, consectetur.';
+      document.getElementById('input-tagline-size').value = '1.25';
+      document.getElementById('input-img-url').value = 'https://thumbs.dreamstime.com/b/man-feeling-suspicious-face-expression-emotion-hesitating-facial-studio-shot-white-isolated-background-copy-space-90927117.jpg';
+      document.getElementById('input-accent').value = '#a855f7';
+      document.getElementById('input-btn-text').value = 'Button';
+      document.getElementById('input-bio-text').value = 'Ini contoh isi dari Button, kreasikan saja';
+      
+      socials = [
+        { name: 'Social 1', url: 'link' },
+        { name: 'Social 2', url: 'link' },
+        { name: 'Social 3', url: 'link' },
+        { name: 'Social 4', url: 'link' }
+      ];
+      
+      renderSocialInputs();
+      updateCard();
+    }
+
+    function exportHTML() {
+      const name = document.getElementById('input-name').value;
+      const nameSize = document.getElementById('input-name-size').value;
+      const tagline = document.getElementById('input-tagline').value;
+      const taglineSize = document.getElementById('input-tagline-size').value;
+      const imgUrl = document.getElementById('input-img-url').value;
+      const accent = document.getElementById('input-accent').value;
+      const btnText = document.getElementById('input-btn-text').value;
+      const bioText = document.getElementById('input-bio-text').value;
+
+      let socialsHTML = '';
+      socials.forEach((item, index) => {
+        if (item.name) {
+          socialsHTML += `<a href="${item.url || '#'}" target="_blank" style="color: ${accent}; text-decoration: none;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${item.name}</a>`;
+          if (index < socials.length - 1) {
+            socialsHTML += ` <span style="color: #4b5563;">•</span> `;
+          }
+        }
+      });
+
+      const standaloneCode = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${name} - Profile Card</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body {
+      background-color: #08080a;
+      color: #f3f4f6;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+    }
+    .card-wrapper {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    .profile-card {
+      background-color: #0d0e12;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
+      width: 780px;
+      border-radius: 28px;
+      padding: 36px;
+      display: flex;
+      flex-direction: row;
+      gap: 32px;
+      justify-content: space-between;
+      align-items: stretch;
+    }
+    @media (max-width: 800px) { .profile-card { zoom: 0.85; } }
+    @media (max-width: 650px) { .profile-card { zoom: 0.68; } }
+    @media (max-width: 500px) { .profile-card { zoom: 0.52; } }
+    @media (max-width: 380px) { .profile-card { zoom: 0.44; } }
+
+    .card-left { flex: 1; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+    .card-name { font-weight: 900; color: #fff; text-transform: uppercase; line-height: 1.0; font-size: ${nameSize}rem; white-space: nowrap; word-break: keep-all; }
+    .card-tagline { color: #9ca3af; font-size: ${taglineSize}rem; margin-top: 12px; line-height: 1.4; }
+    .divider { width: 100%; height: 3px; background-color: ${accent}; border-radius: 999px; margin-bottom: 16px; box-shadow: 0 0 12px ${accent}; }
+    .social-links { font-weight: 700; font-size: 0.875rem; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .card-right { width: 260px; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; flex-shrink: 0; }
+    .img-box { width: 260px; height: 260px; border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+    .img-box img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+    .action-btn { width: 100%; padding: 14px; border-radius: 16px; background-color: ${accent}; font-weight: 900; color: #000; text-transform: uppercase; border: none; cursor: pointer; font-size: 0.75rem; letter-spacing: 0.05em; transition: 0.2s; }
+    .action-btn:hover { opacity: 0.9; }
+
+    /* Modal Styles */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+    .modal-card { background: #12131a; border: 1px solid rgba(255,255,255,0.1); width: 100%; max-width: 500px; border-radius: 20px; padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.8); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 16px; margin-bottom: 16px; }
+    .modal-user { display: flex; align-items: center; gap: 12px; }
+    .modal-user img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid ${accent}; }
+    .bio-box { background: rgba(255,255,255,0.05); padding: 16px; border-radius: 12px; font-size: 0.875rem; color: #d1d5db; line-height: 1.6; white-space: pre-line; }
+    .close-btn { background: none; border: none; color: #9ca3af; cursor: pointer; font-size: 20px; }
+  </style>
+</head>
+<body>
+
+  <div class="card-wrapper">
+    <div class="profile-card">
+      <div class="card-left">
+        <div>
+          <h1 class="card-name">${name}</h1>
+          <p class="card-tagline">${tagline}</p>
+        </div>
+        <div style="margin-top: 24px;">
+          <div class="divider"></div>
+          <div class="social-links">
+            ${socialsHTML}
+          </div>
+        </div>
+      </div>
+      <div class="card-right">
+        <div class="img-box">
+          <img src="${imgUrl}" alt="Profile">
+        </div>
+        <button class="action-btn" onclick="openBioModal()">${btnText}</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="bioModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-user">
+          <img src="${imgUrl}">
+          <div>
+            <h3 style="color:#fff; font-size: 1rem; font-weight:700;">${name}</h3>
+            <p style="color:${accent}; font-size: 0.75rem;">${tagline}</p>
+          </div>
+        </div>
+        <button class="close-btn" onclick="closeBioModal()">&times;</button>
+      </div>
+      <p style="font-size:0.75rem; color:#9ca3af; font-weight:700; text-transform:uppercase; margin-bottom:8px;">Autobiography / Bio</p>
+      <div class="bio-box">${bioText}</div>
+      <div style="margin-top: 20px; text-align: right;">
+        <button onclick="closeBioModal()" style="padding: 8px 16px; border-radius: 8px; background: rgba(255,255,255,0.1); color: #fff; border: none; cursor: pointer; font-size: 0.75rem;">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openBioModal() { document.getElementById('bioModal').style.display = 'flex'; }
+    function closeBioModal() { document.getElementById('bioModal').style.display = 'none'; }
+  <\/script>
+</body>
+</html>`;
+
+      const blob = new Blob([standaloneCode], { type: 'text/html' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${name.toLowerCase().replace(/\s+/g, '-')}-profile-card.html`;
+      a.click();
+    }
+
+    function exportImage() {
+      const target = document.getElementById('export-target');
+      
+      // Temporary override zoom for clean 1:1 render
+      const currentZoom = target.style.zoom;
+      target.style.zoom = '1';
+
+      html2canvas(target, {
+        backgroundColor: '#08080a',
+        scale: 2,
+        useCORS: true
+      }).then(canvas => {
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = 'profile-card.png';
+        a.click();
+        target.style.zoom = currentZoom;
+      });
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>
